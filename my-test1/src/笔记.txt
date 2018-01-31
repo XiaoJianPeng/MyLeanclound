@@ -1,0 +1,115 @@
+数据存储开发指南：https://leancloud.cn/docs/leanstorage_guide-js.html#hash7247859
+后台管理：https://leancloud.cn/dashboard/data.html?appid=VKJfEk81YqWIqkxLtqxlyGpH-gzGzoHsz#/TestObject
+import AV from 'leancloud-storage'
+
+var APP_ID = 'VKJfEk81YqWIqkxLtqxlyGpH-gzGzoHsz';
+var APP_KEY = 'H1hrm0dJWbnpzFAS6jJRsmuD';      
+//初始化
+AV.init({
+  appId: APP_ID,
+  appKey: APP_KEY
+});
+如果AV是在main.js文件中引入，App.Vue中使用AV时需要再添加import AV from 'leancloud-storage'
+
+数据类型
+AV.Object 支持以下数据类型：
+
++
+  // 该语句应该只声明一次
+  var TestObject = AV.Object.extend('DataTypeTest');
+
+  var number = 2014;
+  var string = 'famous film name is ' + number;
+  var date = new Date();
+  var array = [string, number];
+  var object = { number: number, string: string };
+
+  var testObject = new TestObject();
+  testObject.set('testNumber', number);
+  testObject.set('testString', string);
+  testObject.set('testDate', date);
+  testObject.set('testArray', array);
+  testObject.set('testObject', object);
+  testObject.set('testNull', null);
+  testObject.save().then(function(testObject) {
+    // 成功
+  }, function(error) {
+    // 失败
+  });
++
+我们不推荐在 AV.Object 中储存大块的二进制数据，比如图片或整个文件。每个 AV.Object 的大小都不应超过 128 KB。如果需要储存更多的数据，建议使用 AV.File。
+
++
+注意，时间类型在云端将会以 UTC 时间格式存储，但是客户端在读取之后会做转化成本地时间。
+
+ES6语法：
+
+class Todo extends AV.Object {}
+// 需要向 SDK 注册这个 Class
+AV.Object.register(Todo);
++
+若想了解更多有关 LeanStorage 如何解析处理数据的信息，请查看专题文档《数据与安全》。
+
+创建数据表时会默认生成以下字段：
+
+内置属性	类型	描述
+objectId	String	该对象唯一的 Id 标识
+ACL	ACL	该对象的权限控制，实际上是一个 JSON 对象，控制台做了展现优化。
+createdAt	Date	该对象被创建的 UTC 时间
+updatedAt	Date	该对象最后一次被修改的时间
+注意：自定义的属性名，不能以双下划线 __ 开头，也不能与以下系统保留字段和内置属性重名（不区分大小写）。
+ACL、className、createdAt、objectId、updatedAt
+属性值
+可以是字符串、数字、布尔值、数组或字典。 建议驼峰命名法
+
+一些默认的数据类型被序列化之后的格式：
+
++
+类型	序列化之后的格式
+Date	{"__type": "Date","iso": "2015-11-21T18:02:52.249Z"}
+Buffer	{"__type": "Bytes","base64":"utf-8-encoded-string}"
+Pointer	{"__type":"Pointer","className":"Todo","objectId":"55a39634e4b0ed48f0c1845c"}
+AV.Relation	{"__type": "Relation","className": "Todo"}
+//添加和查询
+methods:{
+    userAdd(){      
+      //新建对象
+      var userInfo=new UserInfo();
+      userInfo.set('name',this.name);
+      userInfo.set('gender',this.gender);
+      userInfo.set('Age',this.age);
+      userInfo.set('Phone',this.phone);
+      userInfo.save().then(function (user){
+       this.usermsg=user.toJSON();
+      }.bind(this),function(error){
+        console.error(error);
+      })
+    },
+    queryById(value){
+      var query=new AV.Query('UserInfo');
+      query.get(value).then(function (user) {
+        //获取成功
+        this.currName=user.get('name'); //单独获取某个属性值
+        this.usermsg=user.toJSON();
+      }.bind(this),function(error){
+        console.error(error);
+      });
+    }
+  }
+同步对象
+
+多终端共享一个数据时，为了确保当前客户端拿到的对象数据是最新的，可以调用刷新接口来确保本地数据与云端的同步：
+
++
+  // 使用已知 objectId 构建一个 AV.Object
+  var todo = new Todo();
+  todo.id = '5590cdfde4b00f7adb5860c8';
+  todo.fetch().then(function (todo) {
+    // // todo 是从服务器加载到本地的 Todo 对象
+    var priority = todo.get('priority');
+  }, function (error) {
+
+  });
+刷新操作会强行使用云端的属性值覆盖本地的属性。因此如果本地有属性修改，刷新操作会丢弃这些修改。
+
+
