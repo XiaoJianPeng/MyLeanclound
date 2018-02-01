@@ -96,6 +96,13 @@ methods:{
       });
     }
   }
+
+  // 获取三个特殊属性
+    var objectId = todo.id;
+    var updatedAt = todo.updatedAt;
+    var createdAt = todo.createdAt;
+
+
 同步对象
 
 多终端共享一个数据时，为了确保当前客户端拿到的对象数据是最新的，可以调用刷新接口来确保本地数据与云端的同步：
@@ -110,6 +117,149 @@ methods:{
   }, function (error) {
 
   });
-刷新操作会强行使用云端的属性值覆盖本地的属性。因此如果本地有属性修改，刷新操作会丢弃这些修改。
+同步指定属性
+目前 Todo 这个类已有四个自定义属性：priority、content、location 和 title。为了节省流量，现在只想刷新 priority 和 location 可以使用如下方式：
 
++
+  // 使用已知 objectId 构建一个 AV.Object
+  var todo = new Todo();
+  todo.id = '5590cdfde4b00f7adb5860c8';
+  todo.fetch({
+    keys: 'priority,location'
+  }).then(function (todo) {
+    // 获取到本地
+  }, function (error) {
+    // 异常处理
+    console.error(error);
+  });
+刷新操作会强行使用云端的属性值覆盖本地的属性。因此如果本地有属性修改，刷新操作会丢弃这些修改。
+更新对象
+1.LeanStorage 上的更新对象都是针对单个对象，云端会根据有没有 objectId 来决定是新增还是更新一个对象。
+假如 id 已知，则可以通过如下接口从本地构建一个 AV.Object 来更新这个对象：
+var user =new AV.Object.createWithoutData('UserInfo',value)
+      user.set('name','张双双');
+      user.save();
+
+数组更新 
+更新数组也是原子操作。使用以下方法可以方便地维护数组类型的数据：
+
+AV.Object.add('arrayKey', value)
+
+将指定对象附加到数组末尾。
+AV.Object.addUnique('arrayKey', value);
+如果数组中不包含指定对象，将该对象加入数组，对象的插入位置是随机的。
+AV.Object.remove('arrayKey', value);
+从数组字段中删除指定对象的所有实例。
+例子：updateById(value){ //根据id更新
+      var reminder1 = new Date('2015-11-11 08:15:00');
+      var reminder2 = new Date('2015-11-11 08:20:00');
+      var reminder3 = new Date('2015-11-11 08:30:00');
+      var reminders = [reminder1, reminder2, reminder3];
+      var user =new AV.Object.createWithoutData('UserInfo',value)
+      // user.set('reminders',reminders);
+      user.addUnique('reminders',reminders);
+      user.save();
+删除对象
+
+注意：删除的对象不存在也会提示删除成功！
+deleteUser(value){
+      var user=AV.Object.createWithoutData('UserInfo',value);
+  
+      user.destroy().then(function(success){    
+        if(success.createdAt==null){
+          alert('要删除的用户不存在！');
+        }
+        else{
+          alert('删除成功！');
+        }
+        
+      },function(error){
+        alert(error)
+      });
+    },
+
+
+数据协议
+
+很多开发者在使用 LeanStorage 初期都会产生疑惑：客户端的数据类型是如何被云端识别的？ 因此，我们有必要重点介绍一下 LeanStorage 的数据协议。
+
++
+先从一个简单的日期类型入手，比如在 JavaScript 中，默认的日期类型是 Date，下面会详细讲解一个 Date 是如何被云端正确的按照日期格式存储的。
+
++
+为一个普通的 AV.Object 的设置一个 Date 的属性，然后调用保存的接口：
+
++
+  var testDate = new Date('2016-06-04');
+  var testAVObject = new AV.Object('TestClass');
+  testAVObject.set('testDate', testDate);
+  testAVObject.save();
++
+JavaScript SDK 在真正调用保存接口之前，会自动的调用一次序列化的方法，将 Date 类型的数据，转化为如下格式的数据：
+
++
+{
+  "__type": "Date",
+  "iso": "2015-11-21T18:02:52.249Z"
+}
++
+然后发送给云端，云端会自动进行反序列化，这样自然就知道这个数据类型是日期，然后按照传过来的有效值进行存储。因此，开发者在进阶开发的阶段，最好是能掌握 LeanStorage 的数据协议。如下表介绍的就是一些默认的数据类型被序列化之后的格式：
+
++
+类型	序列化之后的格式
+Date	{"__type": "Date","iso": "2015-11-21T18:02:52.249Z"}
+Buffer	{"__type": "Bytes","base64":"utf-8-encoded-string}"
+Pointer	{"__type":"Pointer","className":"Todo","objectId":"55a39634e4b0ed48f0c1845c"}
+AV.Relation	{"__type": "Relation","className": "Todo"}
+
+文件上传：
+<input Type="button" value="从数据流创建文件" @click="createFile()">
+         <br>
+         <input type="file" id="photoFileUpload" @change="uploadFile" /> 
+         <input Type="button" value="上传" @click="upload()">
+         <br>
+         <progress v-show="progressCurrent>0" :value="progressCurrent" max=100 ></progress>
+ 
+
+createFile(){//从数据流构建文件
+      var data ={base64:'6K+077yM5L2g5Li65LuA5LmI6KaB56C06Kej5oiR77yf'};
+      var file=new AV.File('resume.txt',data);
+      file.save();
+
+      var bytes= [0xBE, 0xEF, 0xCA, 0xFE];
+      var byteArrayFile=new AV.File('myFile.txt',bytes);
+      byteArrayFile.save();
+    },
+    uploadFile($event){//获取选中的文件
+      this.file = $event.target.files[0];
+    },
+    upload(){
+      if(this.file.name==null){
+        alert('文件为空！');
+        return;
+      }     
+      var _this=this;   
+      var file=new AV.File(this.file.name,this.file);
+      //保存文件
+      file.save({
+        onprogress(e){//监听上传进度
+          console.log(e);
+          _this.progressCurrent=e.percent;
+        }
+      }).then(function(file){
+        console.log(file.url());
+      },function(error){
+        console.error(error);
+      });
+    }
+
+文件删除
+默认情况下，文件的删除权限是关闭的，需要进入 控制台 > 存储 > _File，选择菜单 其他 > 权限设置 > delete 来开启。
+
+ var file =AV.File.createWithoutData('5a72f5f3ac502e00389d9c09');
+      file.destroy().then(function(success){
+        alert('删除成功！');
+      },function(error){
+        console.error(error);
+      });
 
