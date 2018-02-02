@@ -21,22 +21,42 @@
          
         <input Type="button" value="删除某个用户" @click="deleteUser('5a72cf881b69e60037c93e90')">
         <br>
-        <input Type="button" value="批量删除" @click="getAll()">
+        <input Type="button" value="批量删除" @click="deleteBatch()">
         <div>
           <hr>
-         <h3>文件 </h3>
-         <input Type="button" value="从数据流创建文件" @click="createFile()">
-         <br>
-         <input type="file" id="photoFileUpload" @change="uploadFile" /> 
-         <input Type="button" value="上传" @click="upload()">
-         <br>
-         <progress v-show="progressCurrent>0" :value="progressCurrent" max=100 ></progress>
-
-         <input Type="button" value="删除文件" @click="deleteFile()">
+          <h3>文件 </h3>
+          <input Type="button" value="从数据流创建文件" @click="createFile()">
+          <br>
+          <input type="file" id="photoFileUpload" @change="uploadFile" /> 
+          <input type="button" value="上传" @click="upload()">
+          <br>
+          <progress v-show="progressCurrent>0" :value="progressCurrent" max=100 ></progress>
+          <input type="button" value="删除文件" @click="deleteFile()">
+          <input type="button" value="保存(关联文件)" @click="saveFile()">
+          <input type="button" value="查询(关联文件)" @click="queryFile()">
+          <br>
+          <img v-for="(item,index) in imgList" :key="index" :src="item" alt="明星" />
         </div>
       </div>
       <div>
-
+        <hr>
+        <h3>查询</h3>
+        <input type="button" value="按条件查询" @click="query">
+        <input type="button" value="创建关系对象tag和todoFolder" @click="createRelation">
+        <input type="button" value="关系查询" @click="query">
+        <input type="button" value="内嵌查询" @click="queryIn">
+        <input type="button" value="向手机发送验证码" @click="send">
+        <div>
+          <ul>
+            <li v-for="item in result " v-text="item">
+            </li>
+          </ul>
+          
+        </div>
+      </div>
+      <div>
+        <input type="button" value="注册用户" @click="register">
+        <input type="button" value="用第三方账号登录" @click="signUpOther">
       </div>
     </div>
   </div>
@@ -44,9 +64,10 @@
 
 <script>
   // var AV = require('leancloud-storage');
-  import AV from 'leancloud-storage'
+  import AV,{ Query } from 'leancloud-storage'
   //声明类型
   var UserInfo =AV.Object.extend('UserInfo');
+  var Todo =AV.Object.extend('Todo');
   export default {
   name: 'app',
   data () {
@@ -61,11 +82,13 @@
       age:'23',
       number:100,
       phone:'15188305021',
-      progressCurrent:0
+      progressCurrent:0,
+      imgList:[],
+      result:{}
     }
   },
   methods:{
-    userAdd(){      
+    userAdd(){//添加用户      
       //新建对象
       var reminder1 = new Date('2015-11-11 07:10:00');    
       var reminders = [reminder1];
@@ -82,7 +105,7 @@
         console.error(error);
       })
     },
-    queryById(value){
+    queryById(value){//根据Id查询
       var query=new AV.Query('UserInfo');
       query.get(value).then(function (user) {
         //获取成功
@@ -145,7 +168,7 @@
         alert(error)
       });
     },
-    getAll(){
+    deleteBatch(){//批量删除
       var ui1 = new UserInfo();
       ui1. id='5a72cf4f2f301e0041f46f0d';
       var ui2 = new UserInfo();
@@ -195,6 +218,131 @@
         alert('删除成功！');
       },function(error){
         console.error(error);
+      });
+    },
+    saveFile(){//保存图片并关联其他对象
+      var file = AV.File.withURL('Satomi_Ishihara.gif', 'http://ww3.sinaimg.cn/bmiddle/596b0666gw1ed70eavm5tg20bq06m7wi.gif');
+      file.save().then(function(file1) {
+          // 文件保存成功
+          console.log(file.url());
+          var todo = new Todo();
+          todo.set('girl',file1);
+          todo.set('topic','明星');
+          todo.save().then(function (todo){
+            console.log(todo);
+          },function(error){
+            console.error(error);
+          });
+      }, function(error) {
+        // 异常处理
+        console.error(error);
+      });    
+    },
+    queryFile(){     //查询对象关联图片文件
+      var _this=this;
+      var query =new AV.Query('Todo');
+      query.equalTo('topic','明星');
+      query.include('girl');
+      query.find().then(list=>{
+        list.map(todo=>{
+          var file=todo.get('girl');
+          _this.imgList.push(file.get('url'));
+        });
+      });
+      console.log(this.imgList);
+    },
+    query(){//条件查询
+      var _this=this;
+      var q=new AV.Query('UserInfo');
+      // q.equalTo('number',100);//等于
+      q.lessThan('number', 101); //小于
+      q.startsWith('name', '张');
+      q.find().then(function(result){
+        _this.result=result;
+      },function(error){
+        console.error(error);
+      })
+    },
+    createRelation(){//创建关系对象
+      // var tag1 =new AV.Object('Tag');
+      // tag1.set('name','今日必做');
+      // var tag2 =new AV.Object('Tag');
+      // tag2.set('name','老婆吩咐');
+      // var tag3 =new AV.Object('Tag');
+      // tag3.set('name','十分重要');
+      // var tags=[tag1,tag2,tag3];
+      // //批量保存tag
+      // AV.Object.saveAll(tags).then(function(savedTags){
+      //   console.log('保存成功！1');
+      //   var todoFolder=new AV.Object('TodoFolder');
+      //   todoFolder.set('name','家庭');
+      //   todoFolder.set('priority',1);
+      //   var relation =todoFolder.relation('tags');//relation已废弃
+      //   relation.add(tag1);
+      //   relation.add(tag2);
+      //   relation.add(tag3);
+      //   console.log('2');
+      //   todoFolder.save();
+      //   console.log('3');
+      // },function(error){
+      //   console.error(error);
+      // });
+      //更新Pointer 类型字段的值
+      var type=AV.Object.createWithoutData('Types','5a741052128fe1003da0c771')
+      var user = AV.Object.createWithoutData('UserInfo', '5a7199949f545416300cd78e');
+      // 修改属性 
+      user.set('typePointer', type);
+      // 保存到云端
+      user.save();     
+    },
+    queryIn(){
+      var _this=this;
+      var innerQuery =new AV.Query('Types');
+      innerQuery.equalTo('title','A类用户');
+      var query=new AV.Query('UserInfo');
+
+      query.matchesQuery('typePointer',innerQuery);
+      query.find().then(function(result){
+        _this.result=result;
+      },function(error){
+        console.error(error);
+      });
+      // query.doesNotMatchQuery('typePointer',innerQuery);
+    },
+    send(){
+      AV.Cloud.requestSmsCode('15188305020').then(function(success){
+        console.log(success);
+      },function(error){
+        console.error(error);
+      });
+    },
+    register(){
+       // 新建 AVUser 对象实例
+      var user = new AV.User();
+      // 设置用户名
+      user.setUsername('Tom');
+      // 设置密码
+      user.setPassword('!@#123');
+      // 设置邮箱
+      user.setEmail('892825058@qq.com');
+      user.setMobilePhoneNumber('15188305020');
+      user.signUp().then(function (loginedUser) {
+          console.log(loginedUser);
+      }, function (error) {
+        console.error(error);
+      });
+    },
+    signUpOther(){
+      AV.User.signUpOrlogInWithAuthData({
+      // 微博（weibo）用 uid
+      // 微信（weixin）和 QQ（qq）用 openid
+      "openid": "oPrJ7uM5Y5oeypd0fyqQcKCaRv3o",
+      "access_token": "OezXcEiiBSKSxW0eoylIeNFI3H7HsmxM7dUj1dGRl2dXJOeIIwD4RTW7Iy2IfJePh6jj7OIs1GwzG1zPn7XY_xYdFYvISeusn4zfU06NiA1_yhzhjc408edspwRpuFSqtYk0rrfJAcZgGBWGRp7wmA",
+      "expires_at": "2016-01-06T11:43:11.904Z"
+      }, 'qq').then(function (s) {
+      
+      }, function (e) {
+
       });
     }
   }
