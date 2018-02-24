@@ -2,6 +2,16 @@
   <div id="app">
     <h1>{{ msg }}</h1>
     <div>
+      <div>
+        {{ a | data }}
+       <label for="">用户名:</label>
+          <input type="text" value="" v-model="acount">
+          <br>
+          <label for="">密  码:</label>
+          <input type="text" value="" v-model="password">
+          <br>
+          <input type="button" value="登录" @click="login">
+       </div>
        <div>
         <label for="name">姓名：</label><input type="text" v-model="name"> 
         <br><label for="gender">性别：</label><input type="text" v-model="gender"> 
@@ -13,6 +23,9 @@
 
       </div>
       <div>
+        <input Type="button" value="内嵌查询测试" @click="testQuery">
+         <input Type="button" value="测试异步" @click="testAsync">
+        <input Type="button" value="统计数量" @click="total">
         <input Type="button" value="添加用户" @click="userAdd">
         <input Type="button" value="查询" @click="queryById('5a7199949f545416300cd78e')">
         <input Type="button" value="根据Id更新数组" @click="updateById('5a72db84ac502e00389ce1ee')">
@@ -57,22 +70,36 @@
       <div>
         <input type="button" value="注册用户" @click="register">
         <input type="button" value="用第三方账号登录" @click="signUpOther">
+        <input type="button" value="测试" @click="test">
+        <br>
+        <input type="file" id="photoFileUpload1" @change="batchUlFile" /> 
+        <input type="button" value="批量上传" @click="batchUpload()">
+        <br>
       </div>
     </div>
+    <hr>
+     <div>
+        <input type="button" value="角色设置" @click="roleSet">
+      
+      </div>
   </div>
 </template>
 
 <script>
   // var AV = require('leancloud-storage');
   import AV,{ Query } from 'leancloud-storage'
+  import Filters from './components/filters'
   //声明类型
   var UserInfo =AV.Object.extend('UserInfo');
+  var Imgs = AV.Object.extend('Imgs');
   var Todo =AV.Object.extend('Todo');
+
   export default {
   name: 'app',
   data () {
     return {
       msg: 'Welcome to Your Leancloud',
+      a: Date.now(),
       usermsg:{},
       file:{},
       users:[],
@@ -84,10 +111,133 @@
       phone:'15188305021',
       progressCurrent:0,
       imgList:[],
-      result:{}
+      result:{},      
+      acount:'15188305020',
+      password:'123'
     }
   },
+  filters: {
+  data:function (input) {
+    var d = new Date(input);
+    // var year = d.getFullYear();
+    // var month = d.getMonth() + 1;
+    // var day = d.getDate() <10 ? '0' + d.getDate() : '' + d.getDate();
+    // var hour = d.getHours();
+    // var minutes = d.getMinutes();
+    // var seconds = d.getSeconds();
+    // return year+ '-' + month + '-' + day + ' ' + hour + ':' + minutes + ':' + seconds;
+    return Filters.formatDate(d, 'yyyy-MM-dd hh:mm')
+  }
+},
   methods:{
+    testAsync() {
+      Test.box5()
+    },
+    testQuery () {
+      var query =new AV.Query('UserInfo')
+      let orgs = AV.User.current().get('manageOrgs')
+      var cql = 'select * from UserInfo where org in ()'
+      orgs.forEach(element => {
+        cql=cql.replace(')', '"'+element +'",)') 
+      })
+      // var quData = AV.Query.or(query)
+      // quData.find().then((results) => {
+      //   console.log(results)
+      // }).catch((error) => {
+      //   console.error(error)
+      // })
+      cql=cql.replace(',)', ')')
+      console.log(cql)
+      // var cql = 'select * from UserInfo where org in (?)'
+      // var pvalues =[ orgStr]
+      AV.Query.doCloudQuery(cql).then(function (data){
+        console.log(data.results)
+      }).catch(function(error) {
+        console.error(error)
+      })
+      // var query =new AV.Query('UserInfo')
+      // // 构造截至日期     
+      // var innerQuery = new AV.Query('User')
+      // innerQuery.equalTo('username','肖建朋')
+      // // innerQuery.select(['manageOrgs'])
+      // innerQuery.find().then((results) => {
+      //   console.log(results)
+      // }).catch((error) => {
+      //   console.error(error)
+      // })
+      // query.matchesQuery('org', innerQuery)
+      // query.find().then((results) => {
+      //   console.log(results)
+      // }).catch((error) => {
+      //   console.error(error)
+      // })
+    },
+    roleSet() {
+      var roleAcl = new AV.ACL();
+      roleAcl.setPublicReadAccess(true);
+      roleAcl.setPublicWriteAccess(false);
+
+      // 当前用户是该角色的创建者，因此具备对该角色的写权限
+      roleAcl.setWriteAccess(AV.User.current(), true)
+      var Admin = new AV.Role('Admin',roleAcl)
+      // console.log(Admin)
+      Admin.save().then(function (res) {
+        console.log(res)
+      }).catch(function (error) {
+        console.error(error)
+      })
+    },
+    total() {
+      var query = new AV.Query('UserInfo')
+      query.equalTo('age', '10')
+      query.count().then(function (res) {
+         let data = {
+          org: 'ss',
+          res
+        }
+        console.log(data)
+      }).catch(function (error) {
+        console.error(error)
+      })
+    },
+    batchUlFile($event) {
+      var localFile=$event.target.files[0];
+      // console.log(localFile)
+      var imgs = new Imgs()
+      imgs.set('name',localFile.name)
+      
+      var file=new AV.File(localFile.name,localFile);
+      imgs.set('image',file)
+      this.imgList.push(imgs);
+    },
+    batchUpload() {
+      console.log(this.imgList)
+      AV.Object.saveAll(this.imgList).then(function(res){
+        console.log(res);
+      }).catch(function(error){
+        console.error(error);
+      })
+    },
+    login(){
+      var _this=this;
+       console.log(this.acount+';' +this.password);
+       AV.User.logInWithMobilePhone(this.acount, this.password).then(function (loginedUser) {
+            console.log('登录成功:'+loginedUser.toJSON());
+        }, (function (error) {
+            console.log(error.code);
+            // console.error(error);   
+            if(code==211||code==210){
+                _this.$http.post('http://s.sishuxuefu.com:8008/AttendanceWebService.asmx/CheckInAndDataSync', {
+                    acount:acount,
+                    password:password
+                }).then(function (response) {
+                    console.log(response);
+                }).catch(function (error) {
+                    console.error(error);
+                });
+            }         
+        }));
+    },
     userAdd(){//添加用户      
       //新建对象
       var reminder1 = new Date('2015-11-11 07:10:00');    
@@ -206,8 +356,8 @@
           console.log(e);
           _this.progressCurrent=e.percent;
         }
-      }).then(function(file){
-        console.log(file.url());
+      }).then(function(file){       
+        console.log(file);
       },function(error){
         console.error(error);
       });
@@ -222,6 +372,7 @@
     },
     saveFile(){//保存图片并关联其他对象
       var file = AV.File.withURL('Satomi_Ishihara.gif', 'http://ww3.sinaimg.cn/bmiddle/596b0666gw1ed70eavm5tg20bq06m7wi.gif');
+      
       file.save().then(function(file1) {
           // 文件保存成功
           console.log(file.url());
@@ -289,11 +440,16 @@
       // });
       //更新Pointer 类型字段的值
       var type=AV.Object.createWithoutData('Types','5a741052128fe1003da0c771')
+      type.set('title', 'C类用户(三)')
       var user = AV.Object.createWithoutData('UserInfo', '5a7199949f545416300cd78e');
       // 修改属性 
       user.set('typePointer', type);
       // 保存到云端
-      user.save();     
+      user.save().then(function (res) {
+        console.log(res)
+      }).catch(function (error) {
+        console.error(error)
+      })     
     },
     queryIn(){
       var _this=this;
@@ -343,6 +499,27 @@
       
       }, function (e) {
 
+      });
+    },
+    test(){
+      // 将内容按章节顺序添加到页面上
+      var chapterIds = [
+        '584e1c408e450a006c676162', // 第一章
+        '584e1c43128fe10058b01cf5', // 第二章
+        '581aff915bbb500059ca8d0b'  // 第三章
+      ];
+
+      new AV.Query('Chapter').get(chapterIds[0]).then(function(chapter0) {
+        // 向页面添加内容
+        addHtmlToPage(chapter0.get('content'));
+        // 返回新的 Promise
+        return new AV.Query('Chapter').get(chapterIds[1]);
+      }).then(function(chapter1) {
+        addHtmlToPage(chapter1.get('content'));
+        return new AV.Query('Chapter').get(chapterIds[2]);
+      }).then(function(chapter2) {
+        addHtmlToPage(chapter2.get('content'));
+        // 完成
       });
     }
   }
