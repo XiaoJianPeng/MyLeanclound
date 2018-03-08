@@ -260,6 +260,7 @@
       query.get(value).then(function (user) {
         //获取成功
         this.currName=user.get('name'); //单独获取某个属性值
+        console.log(user.get('typePointer').id)
         this.usermsg=user.toJSON();
       }.bind(this),function(error){
         console.error(error);
