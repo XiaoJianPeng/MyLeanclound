@@ -1,6 +1,6 @@
 import Vue from 'vue'
 import App from './App.vue'
-import AV from 'leancloud-storage'
+import AV from 'leancloud-storage/live-query'
 import axios from 'axios'
 
 Vue.prototype.$http = axios;  //其他页面在使用axios的时候直接  this.$http就可以了

@@ -2,7 +2,7 @@
   <div id="app">
     <h1>{{ msg }}</h1>
     <div>
-      <div>
+      <!-- <div>
         {{ a | data }}
        <label for="">用户名:</label>
           <input type="text" value="" v-model="acount">
@@ -20,8 +20,7 @@
         <br>
         <span>当前添加用户{{currName}}的信息为：{{usermsg}}</span>
         <br>
-
-      </div>
+      </div> -->
       <div>
         <input Type="button" value="内嵌查询测试" @click="testQuery">
          <input Type="button" value="测试异步" @click="testAsync">
@@ -51,7 +50,7 @@
           <img v-for="(item,index) in imgList" :key="index" :src="item" alt="明星" />
         </div>
       </div>
-      <div>
+      <!-- <div>
         <hr>
         <h3>查询</h3>
         <input type="button" value="按条件查询" @click="query">
@@ -75,7 +74,7 @@
         <input type="file" id="photoFileUpload1" @change="batchUlFile" /> 
         <input type="button" value="批量上传" @click="batchUpload()">
         <br>
-      </div>
+      </div> -->
     </div>
     <hr>
      <div>
@@ -87,7 +86,7 @@
 
 <script>
   // var AV = require('leancloud-storage');
-  import AV,{ Query } from 'leancloud-storage'
+  import AV from 'leancloud-storage/live-query'
   import Filters from './components/filters'
   //声明类型
   var UserInfo =AV.Object.extend('UserInfo');
