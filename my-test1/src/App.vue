@@ -21,7 +21,7 @@
         <span>当前添加用户{{currName}}的信息为：{{usermsg}}</span>
         <br>
       </div> -->
-      <div>
+      <!-- <div>
         <input Type="button" value="内嵌查询测试" @click="testQuery">
          <input Type="button" value="测试异步" @click="testAsync">
         <input Type="button" value="统计数量" @click="total">
@@ -49,7 +49,7 @@
           <br>
           <img v-for="(item,index) in imgList" :key="index" :src="item" alt="明星" />
         </div>
-      </div>
+      </div> -->
       <!-- <div>
         <hr>
         <h3>查询</h3>
@@ -78,16 +78,55 @@
     </div>
     <hr>
      <div>
-        <input type="button" value="角色设置" @click="roleSet">
-      
+        <!-- <input type="button" value="角色设置" @click="roleSet"> -->
+       <label for="">用户名:</label>
+        <input type="text" value="" v-model="acount">
+        <br>
+        <label for="">密  码:</label>
+        <input type="text" value="" v-model="password">
+        <br>
+        <input type="button" value="登录" @click="login">
+
+        <br>
+        <label for="">发送给:</label>
+        <input type="text" value="" v-model="senddata.receiver">
+        <br>
+        <label for="">内容:</label>
+        <input type="text" value="" v-model="senddata.content">
+        <br>
+        <input type="button" value="发送消息" @click="createIMCClient">
+        <input type="button" value="接收消息" @click="receivedMsg">
+        <input type="button" value="获取对话列表" @click="getConversations">
+        <input type="button" value="获取对话历史消息" @click="getNextPageMessages">
+        <br>
+         <span> {{msgInfo}}</span>
+        <div>
+          <span>会话列表</span>
+          <ul id="example-1">
+            <li v-for="item in conversations">
+              {{ item.name }} {{item.id}}
+            </li>
+          </ul>
+        </div>
+        <div>
+          <span>历史消息</span>
+          <ul id="messages">
+            <li v-for="item in messages">
+              {{ item.from }} {{item.text}} {{item.updatedAt}}
+            </li>
+          </ul>
+        </div>
+       
       </div>
   </div>
 </template>
 
 <script>
   // var AV = require('leancloud-storage');
-  import AV from 'leancloud-storage/live-query'
+  import AV from 'leancloud-storage'
   import Filters from './components/filters'
+  import {Realtime, Event, TextMessage} from 'leancloud-realtime';
+  import Md5 from './leancloud/md5'
   //声明类型
   var UserInfo =AV.Object.extend('UserInfo');
   var Imgs = AV.Object.extend('Imgs');
@@ -111,8 +150,17 @@
       progressCurrent:0,
       imgList:[],
       result:{},      
-      acount:'15188305020',
-      password:'123'
+      acount:'xiao',
+      password:'123',
+      senddata: {
+        receiver: '',
+        content: '你好！'
+      },
+      msgInfo:'收到的新消息：',
+      conversations: [],
+      messages: [],
+      messageIterator: null,
+      IMCClient: null
     }
   },
   filters: {
@@ -129,6 +177,122 @@
   }
 },
   methods:{
+    getIMCClient(){
+      let _this = this
+      let realtime = new Realtime({
+        // appId: 'vzFy1xF3AKcUfoDver6ttJR0-gzGzoHsz',
+        // appKey: '9B62Q1Ic2AA9uYScJcqzEDnT'
+        appId: 'VKJfEk81YqWIqkxLtqxlyGpH-gzGzoHsz',
+        appKey: 'H1hrm0dJWbnpzFAS6jJRsmuD'
+      })
+      let receiver = _this.senddata.receiver
+      let username = AV.User.current().get('username')
+      // 用户名admin作为clientId ,获取IMClient对象实例
+      realtime.createIMClient(username).then(function(res) {
+        _this.IMCClient = res
+      })
+    },
+    createIMCClient () {
+      let _this = this
+      let realtime = new Realtime({
+        // appId: 'vzFy1xF3AKcUfoDver6ttJR0-gzGzoHsz',
+        // appKey: '9B62Q1Ic2AA9uYScJcqzEDnT'
+        appId: 'VKJfEk81YqWIqkxLtqxlyGpH-gzGzoHsz',
+        appKey: 'H1hrm0dJWbnpzFAS6jJRsmuD'
+      })
+      let receiver = _this.senddata.receiver
+      let username = AV.User.current().get('username')
+      // 用户名admin作为clientId ,获取IMClient对象实例
+      realtime.createIMClient(username).then(function(res) {
+        // 创建与receiver之间的对话
+        return res.createConversation({
+          members: [receiver],
+          name: username + ' & ' + receiver +'的测试对话',
+          transient: false,
+          unique: true,
+        });
+      }).then(function(conversation) {
+        // 发送消息
+        return conversation.send(new TextMessage(_this.senddata.content)); 
+      }).then(function(message) {
+        console.warn(username + ' & ' + receiver, '发送成功！', message);
+      }).catch(console.error);
+    },
+    receivedMsg () {
+      let realtime = new Realtime({
+        // appId: 'vzFy1xF3AKcUfoDver6ttJR0-gzGzoHsz',
+        // appKey: '9B62Q1Ic2AA9uYScJcqzEDnT'
+        appId: 'VKJfEk81YqWIqkxLtqxlyGpH-gzGzoHsz',
+        appKey: 'H1hrm0dJWbnpzFAS6jJRsmuD'
+      })
+      let _this = this
+      let username = AV.User.current().get('username')
+      realtime.createIMClient(username).then((res) => {
+        // console.log(res._conversationCache._map)
+ 
+        res.on(Event.MESSAGE, function(message, conversation) {
+          _this.msgInfo += message.text
+          console.log(message)
+          console.log('Message received: ' + message.text);
+        });
+      }).catch(err => console.error(err));
+      
+    },
+    //获取对话列表
+    getConversations () {
+      let _this = this
+      let username = AV.User.current().get('username')
+      if(_this.IMCClient === null){
+        setTimeout(() => {
+          this.getIMCClient()
+        }, 2000);
+      }
+      _this.IMCClient.getQuery().containsMembers([username]).find().then(
+        conversations => {
+          _this.conversations =conversations
+          conversations.map(function(conversation) {
+            console.log(conversation)
+            console.log(conversation.lastMessageAt.toString(), conversation.members);
+          });
+        }
+      )
+      
+    },
+    getMessages(){
+      let _this = this
+      let username = AV.User.current().get('username')
+      _this.IMCClient.getConversation('5b2327d15b90c830ff7f4e58').then(function(conversation) {
+          console.log(conversation);
+          conversation.queryMessages({
+            limit: 20,
+          }).then(messages => {
+            _this.messages = messages
+            console.log(messages)
+          })
+        }).catch(console.error.bind(console));
+    },
+    getNextPageMessages () {
+      let _this = this
+      if( _this.messageIterator === null){
+        _this.IMCClient.getConversation('5b2327d15b90c830ff7f4e58').then(function(conversation) {
+          _this.messageIterator = conversation.createMessagesIterator({ limit: 10 });
+        })
+      }
+      _this.messageIterator.next().then(result => {
+        _this.messages.concat(result.value)
+      }).catch(console.error.bind(console));
+    },
+    login(){
+      var _this=this;
+      console.log(this.acount+';' +this.password);
+      let password = this.password
+      // let password = Md5.getmd5(this.password)
+      AV.User.logIn(this.acount, password).then((loggedInUser) => {
+        console.warn('登录成功', loggedInUser);
+      }, function (error) {
+        console.error(error)
+      });
+    },
     testAsync() {
       Test.box5()
     },
@@ -217,26 +381,7 @@
         console.error(error);
       })
     },
-    login(){
-      var _this=this;
-       console.log(this.acount+';' +this.password);
-       AV.User.logInWithMobilePhone(this.acount, this.password).then(function (loginedUser) {
-            console.log('登录成功:'+loginedUser.toJSON());
-        }, (function (error) {
-            console.log(error.code);
-            // console.error(error);   
-            if(code==211||code==210){
-                _this.$http.post('http://s.sishuxuefu.com:8008/AttendanceWebService.asmx/CheckInAndDataSync', {
-                    acount:acount,
-                    password:password
-                }).then(function (response) {
-                    console.log(response);
-                }).catch(function (error) {
-                    console.error(error);
-                });
-            }         
-        }));
-    },
+  
     userAdd(){//添加用户      
       //新建对象
       var reminder1 = new Date('2015-11-11 07:10:00');    
